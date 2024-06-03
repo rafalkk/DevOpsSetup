@@ -1,0 +1,70 @@
+---
+- name: Install Docker
+  hosts: OCI
+  remote_user: ubuntu
+  become: true  # This enables privilege escalation (sudo)
+
+  tasks:
+    - name: Wait 300 seconds, but only start checking after 5 seconds
+      wait_for_connection:
+        delay: 5
+        timeout: 300
+
+    - name: Docker install for Debian-based systems only
+      when: ansible_os_family == 'Debian'
+      block:
+        - name: Add podman kubic repository
+          deb822_repository:
+            name: podman-kubic
+            signed_by: 'https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_{{ ansible_distribution_version }}/Release.key'
+            uris: 'https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_{{ ansible_distribution_version }}'
+            suites: /
+            enabled: true
+
+        - name: Add docker repository
+          deb822_repository:
+            name: docker
+            signed_by: 'https://download.docker.com/linux/ubuntu/gpg'
+            uris: 'https://download.docker.com/linux/ubuntu'
+            suites: '{{ ansible_distribution_release }}'
+            components: 'stable'
+            enabled: true
+
+        - name: Update apt
+          apt:
+            update_cache: yes
+            cache_valid_time: 86400
+
+        - name: Install required packages
+          apt:
+            name:
+              - apt-transport-https
+              - ca-certificates
+              - curl
+              - software-properties-common
+              - python3
+              - python3-pip
+            state: present
+
+        - name: Update apt and install docker-ce
+          apt:
+            name: 
+              - docker-ce
+              - podman
+            state: latest
+      
+    - name: Install Python packages
+      # required for ansible community.docker.docker_compose module
+      pip:
+        name:
+          - docker
+          - PyYAML
+          - docker-compose
+          - podman-compose
+        state: present
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: true

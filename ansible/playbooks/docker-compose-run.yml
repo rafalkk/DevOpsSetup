@@ -1,0 +1,17 @@
+---
+- name: Run Docker Compose Project
+  hosts: OCI
+  remote_user: ubuntu
+  become: true  # This enables privilege escalation (sudo)
+
+  tasks:
+    - name: Synchronize Docker Compose file to server
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../../docker_services"
+        dest: /APP
+
+    - name: Run Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: /APP/docker_services
+        remove_orphans: true
+        state: present
