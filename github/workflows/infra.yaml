@@ -1,0 +1,94 @@
+name: 'Infrastructure'
+
+on: 
+    workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform_and_ansible:
+    name: 'Terraform OCI & Ansible'
+    runs-on: ubuntu-latest
+    env:
+        TF_VAR_tenancy_ocid: ${{secrets.OCI_TENANCY_OCID}}
+        TF_VAR_user_ocid: ${{secrets.OCI_USER_OCID}}
+        TF_VAR_fingerprint: ${{secrets.OCI_FINGERPRINT}}
+        TF_VAR_compartment_ocid: ${{secrets.OCI_COMPARTMENT_OCID}}
+        TF_VAR_region: ${{secrets.OCI_REGION}}
+        TF_VAR_ssh_public_key: ${{secrets.OCI_SSH_PUBLIC_KEY}}
+        TF_VAR_vm_image_ocid_arm: ocid1.image.oc1.eu-frankfurt-1.aaaaaaaap7velf36uvsguk7e6eyg5tefp74ymj4gnc7rwka3v7flpq74p7gq
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform
+
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+        terraform_wrapper: false # wrapper injects some code to all terraform commands and makes output useless in pipeline; maybe usefull for debug
+
+    # Write HOST_CA_PRIVATE_KEY to userdata.sh script
+    - name: Populate vars in 'userdata' file
+      run: |
+        envsubst < userdata.sh > userdata-populated.sh
+      env:
+        CA_PRIV_KEY: ${{secrets.HOST_CA_PRIVATE_KEY}}
+
+    # Create .pem key file from secret for OCI
+    - name: Setup key
+      run: |
+        echo "${{secrets.OCI_PRIVATE_KEY_PATH}}" > $HOME/oci_api_key.pem
+        echo "TF_VAR_private_key_path=$HOME/oci_api_key.pem" >> "$GITHUB_ENV"
+      
+    # Initialize a new or existing Terraform working directory
+    - name: Terraform Init
+      run: terraform init
+
+    # Generates an execution plan for Terraform
+    - name: Terraform Plan
+      run: terraform plan -input=false
+
+    # Execute Terraform plan
+    - name: Terraform Apply
+      run: terraform apply -auto-approve
+
+    - name: Create inventory.ini file for ansible
+      run: python inventory_create.py # Create inventory.ini in the /ansible/inventory folder so that the script can also be used locally.
+      working-directory: ${{github.workspace}}
+
+    - name: Upload inventory.ini as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: inventory.ini
+        path: ${{github.workspace}}/ansible/inventory/inventory.ini
+
+    - name: Setup ssh key for ansible
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+          ssh-private-key: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+
+    - name: Create known_hosts file and add public host cert
+      run: |
+        mkdir -p ~/.ssh/ && touch ~/.ssh/known_hosts
+        echo "@cert-authority * ${{ secrets.HOST_CA_PUBLIC_KEY }}" >> ~/.ssh/known_hosts
+
+    - name: Run Ansible Playbook - docker-node-setup.yml
+      run: |
+        ansible-playbook -i inventory/inventory.ini playbooks/docker-node-setup.yml
+      working-directory: ${{github.workspace}}/ansible
+
+    - name: Run Ansible Playbook - docker-compose-run.yml
+      run: |
+        ansible-playbook -i inventory/inventory.ini playbooks/docker-compose-run.yml
+      working-directory: ${{github.workspace}}/ansible
