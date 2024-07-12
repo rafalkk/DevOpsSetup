@@ -26,7 +26,7 @@ This configuration follows the GitOps principle, storing all infrastructure conf
 - SSH keys are set up for Ansible, and a `known_hosts` file is created using the public host certificate.
 - Two Ansible playbooks are executed:
   - **docker-node-setup.yml**: Configures the nodes to ensure Docker is properly set up and running.
-  - **docker-compose-run.yml**: Deploys the application using Docker Compose.
+  - **docker-compose-run.yml**: Deploy applications with Docker Compose.
 
 ## 3. Documentation
 
