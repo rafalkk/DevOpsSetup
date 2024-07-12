@@ -68,10 +68,10 @@ This configuration follows the GitOps principle, storing all infrastructure conf
 
 #### ansible/playbooks/
 - **docker-node-setup.yml**: Adds Docker and Podman repository, installs required packages and Python libraries required to run Docker, updates, and runs Docker.
-- **docker-compose-run.yml**: Copy `docker_services/docker-compose.yml` file to the node and runs it, removing previous instances.
+- **docker-compose-run.yml**: Copy the `docker_services' folder, where the projects' compose files are located, to the node and run it, removing the previous instances.
 
 #### docker_services/
-- **docker-compose.yml**: Docker Compose file where all applications are specified, additionally use containrrr/watchtower to ensure all apps are updated.
+- **project folders**: Project folders with Docker Compose files in each, additionally use containrrr/watchtower to ensure all applications are updated.
 
 #### terraform/
 - **main.tf**:
