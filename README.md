@@ -54,14 +54,17 @@ This configuration follows the GitOps principle, storing all infrastructure conf
 │   └── playbooks
 │       ├── docker-node-setup.yml
 │       └── docker-compose-run.yml
-├──docker_services
-|   └── docker-compose.yml
+├── docker_services
+│   ├── service1
+│   │   └── docker-compose.yml
+│   └──service2
+│       └── docker-compose.yml
 ├── terraform
 │   ├── main.tf
 │   ├── variables.tf
 │   ├── outputs.tf (optional)
 │   └── userdata.sh
-└──inventory_create.py
+└── inventory_create.py
 ```
 #### .github/workflows/
 - **infra.yaml**: GitHub Action file that runs all infrastructure automation in sequence, triggered by hand or by updating the main branch.
