@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+
+  nginx:
+    image: nginx:1.27-bookworm
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx-ssl.conf:/etc/nginx/nginx-ssl.conf
+      - letsencrypt:/etc/letsencrypt
+      - acme_challenge:/var/www/certbot
+    networks:
+      - webapp-network    
+    depends_on:
+      - backend
+    command: >
+      /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+     
+  backend:
+    image: ghcr.io/rafalkk/stockplayground:latest
+    environment:
+      - API_KEY=
+      - HCAPTCHA_SECRET_KEY=
+      - HCAPTCHA_SITE_KEY=
+    networks:
+      - webapp-network
+    container_name: stockplayground
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - acme_challenge:/var/www/certbot
+
+    networks:
+      - webapp-network
+
+networks:
+  webapp-network:
+
+volumes:
+  letsencrypt:
+    driver: local
+  acme_challenge:
+    driver: local

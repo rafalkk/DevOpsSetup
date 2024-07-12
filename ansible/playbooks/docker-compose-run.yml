@@ -5,13 +5,27 @@
   become: true  # This enables privilege escalation (sudo)
 
   tasks:
-    - name: Synchronize Docker Compose file to server
-      ansible.posix.synchronize:
-        src: "{{ playbook_dir }}/../../docker_services"
-        dest: /APP
+    - name: Ensure logged out from ghcr.io # https://stackoverflow.com/questions/74656167/unable-to-pull-image-from-github-container-registry-ghcr
+      docker_login:
+        registry_url: ghcr.io
+        state: absent
 
-    - name: Run Docker Compose
+    - name: Synchronize Docker Compose projects to server
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../../docker_services/"
+        dest: /APP/docker_services
+        delete: yes
+        recursive: yes
+
+    - name: List project directories
+      find:
+        paths: /APP/docker_services
+        file_type: directory
+      register: project_dirs
+
+    - name: Run Docker Compose for each project
       community.docker.docker_compose_v2:
-        project_src: /APP/docker_services
+        project_src: "{{ item.path }}"
         remove_orphans: true
         state: present
+      loop: "{{ project_dirs.files }}"

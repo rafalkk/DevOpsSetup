@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment: 
+      - WATCHTOWER_POLL_INTERVAL=10 # seconds
+    command: air-bot stockplayground # only scan for container with that name
+    container_name: watchtower

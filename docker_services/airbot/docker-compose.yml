@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+
+  air_bot_app:
+    image: ghcr.io/rafalkk/air_bot:latest # to use watchtower with private images on docker hub you need use the full image name, including the repository prefix index.docker.io
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_API_KEY=
+      - PROXY_API_KEY=
+    container_name: air-bot
+
+
+
+
